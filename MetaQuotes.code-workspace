@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "../../../AppData/Roaming/MetaQuotes"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.mqh": "cpp",
+			"*.mq4": "cpp",
+			"*.mq5": "cpp"
+		},
+		"CodeGPT.apiKey": "Docker"
+	}
+}
