@@ -10,7 +10,7 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Instalar dependências
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 # Gerar Prisma Client
 RUN npx prisma generate
@@ -33,4 +33,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
 
 # Comando de inicialização
-CMD ["sh", "-c", "npx prisma migrate deploy && node src/server.js"]
+CMD ["sh", "-c", "npx prisma db push --skip-generate && node src/server.js"]
