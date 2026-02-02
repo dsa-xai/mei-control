@@ -1,129 +1,122 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import api from '../services/api'
+import { create } from 'zustand';
+import { authAPI } from '../services/api';
 
-export const useAuthStore = create(
-  persist(
-    (set, get) => ({
-      user: null,
-      meis: [],
-      meiAtivo: null,
-      token: null,
-      isAuthenticated: false,
-      loading: true,
-
-      // Inicializar auth
-      initialize: async () => {
-        const token = localStorage.getItem('mei-control-token')
-        if (token) {
-          try {
-            api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-            const response = await api.get('/auth/me')
-            set({
-              user: response.data.data,
-              meis: response.data.data.meis || [],
-              meiAtivo: response.data.data.meis?.[0] || null,
-              token,
-              isAuthenticated: true,
-              loading: false
-            })
-          } catch (error) {
-            localStorage.removeItem('mei-control-token')
-            set({ loading: false })
-          }
-        } else {
-          set({ loading: false })
-        }
-      },
-
-      // Login
-      login: async (documento, senha) => {
-        const response = await api.post('/auth/login', { documento, senha })
-        const { usuario, meis, token } = response.data.data
-        
-        localStorage.setItem('mei-control-token', token)
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-        
-        set({
-          user: usuario,
-          meis,
-          meiAtivo: meis?.[0] || null,
-          token,
-          isAuthenticated: true
-        })
-        
-        return response.data
-      },
-
-      // Registro
-      register: async (dados) => {
-        const response = await api.post('/auth/registro', dados)
-        const { usuario, token } = response.data.data
-        
-        localStorage.setItem('mei-control-token', token)
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-        
-        set({
-          user: usuario,
-          meis: [],
-          meiAtivo: null,
-          token,
-          isAuthenticated: true
-        })
-        
-        return response.data
-      },
-
-      // Logout
-      logout: async () => {
-        try {
-          await api.post('/auth/logout')
-        } catch (error) {
-          // Ignora erros no logout
-        }
-        
-        localStorage.removeItem('mei-control-token')
-        delete api.defaults.headers.common['Authorization']
-        
-        set({
-          user: null,
-          meis: [],
-          meiAtivo: null,
-          token: null,
-          isAuthenticated: false
-        })
-      },
-
-      // Selecionar MEI ativo
-      setMeiAtivo: (mei) => {
-        set({ meiAtivo: mei })
-      },
-
-      // Adicionar MEI à lista
-      addMei: (mei) => {
-        const { meis } = get()
-        set({
-          meis: [...meis, mei],
-          meiAtivo: mei
-        })
-      },
-
-      // Atualizar usuário
-      updateUser: (userData) => {
-        set({ user: { ...get().user, ...userData } })
+const useAuthStore = create((set, get) => ({
+  usuario: JSON.parse(localStorage.getItem('mei_usuario')) || null,
+  meiAtual: JSON.parse(localStorage.getItem('mei_atual')) || null,
+  token: localStorage.getItem('mei_token') || null,
+  loading: false,
+  
+  // Login
+  login: async (cpf, senha) => {
+    set({ loading: true });
+    try {
+      const { data } = await authAPI.login(cpf, senha);
+      
+      localStorage.setItem('mei_token', data.token);
+      localStorage.setItem('mei_usuario', JSON.stringify(data.usuario));
+      
+      if (data.usuario.meis?.[0]) {
+        localStorage.setItem('mei_atual', JSON.stringify(data.usuario.meis[0]));
       }
-    }),
-    {
-      name: 'mei-control-auth',
-      partialize: (state) => ({
-        token: state.token,
-        meiAtivo: state.meiAtivo
-      })
+      
+      set({
+        token: data.token,
+        usuario: data.usuario,
+        meiAtual: data.usuario.meis?.[0] || null,
+        loading: false
+      });
+      
+      return { success: true };
+    } catch (error) {
+      set({ loading: false });
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Erro ao fazer login' 
+      };
     }
-  )
-)
+  },
+  
+  // Login por CNPJ
+  loginCnpj: async (cnpj, senha) => {
+    set({ loading: true });
+    try {
+      const { data } = await authAPI.loginCnpj(cnpj, senha);
+      
+      localStorage.setItem('mei_token', data.token);
+      localStorage.setItem('mei_usuario', JSON.stringify(data.usuario));
+      
+      if (data.meiAtual) {
+        localStorage.setItem('mei_atual', JSON.stringify(data.meiAtual));
+      }
+      
+      set({
+        token: data.token,
+        usuario: data.usuario,
+        meiAtual: data.meiAtual || null,
+        loading: false
+      });
+      
+      return { success: true };
+    } catch (error) {
+      set({ loading: false });
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Erro ao fazer login' 
+      };
+    }
+  },
+  
+  // Verificar token
+  verificarAuth: async () => {
+    const token = localStorage.getItem('mei_token');
+    if (!token) {
+      set({ usuario: null, meiAtual: null, token: null });
+      return false;
+    }
+    
+    try {
+      const { data } = await authAPI.me();
+      
+      localStorage.setItem('mei_usuario', JSON.stringify(data.usuario));
+      
+      set({
+        usuario: data.usuario,
+        meiAtual: data.usuario.meis?.[0] || get().meiAtual
+      });
+      
+      return true;
+    } catch (error) {
+      get().logout();
+      return false;
+    }
+  },
+  
+  // Trocar MEI ativo
+  setMeiAtual: (mei) => {
+    localStorage.setItem('mei_atual', JSON.stringify(mei));
+    set({ meiAtual: mei });
+  },
+  
+  // Logout
+  logout: async () => {
+    try {
+      await authAPI.logout();
+    } catch (e) {
+      // Ignora erro de logout
+    }
+    
+    localStorage.removeItem('mei_token');
+    localStorage.removeItem('mei_usuario');
+    localStorage.removeItem('mei_atual');
+    
+    set({ usuario: null, meiAtual: null, token: null });
+  },
+  
+  // Helpers
+  isAdmin: () => get().usuario?.role === 'ADMIN',
+  isCliente: () => get().usuario?.role === 'CLIENTE',
+  isAuthenticated: () => !!get().token && !!get().usuario
+}));
 
-// Inicializar ao carregar
-if (typeof window !== 'undefined') {
-  useAuthStore.getState().initialize()
-}
+export default useAuthStore;

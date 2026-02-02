@@ -1,38 +1,26 @@
-# ============================================
-# MEI Control - Docker Compose
-# ============================================
-# Para desenvolvimento: docker compose up
-# Para produção: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-
 version: '3.8'
 
 services:
-  # ============================================
-  # BANCO DE DADOS PostgreSQL
-  # ============================================
+  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: mei-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-mei_control}
+      POSTGRES_USER: ${POSTGRES_USER:-mei_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mei_secret_2024}
+      POSTGRES_DB: ${POSTGRES_DB:-mei_control}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mei_user} -d ${POSTGRES_DB:-mei_control}"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - mei-network
 
-  # ============================================
-  # BACKEND (API Node.js)
-  # ============================================
+  # Backend API
   backend:
     build:
       context: ./backend
@@ -40,46 +28,48 @@ services:
     container_name: mei-backend
     restart: unless-stopped
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
+      NODE_ENV: production
       PORT: 3001
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-mei_control}?schema=public
-      JWT_SECRET: ${JWT_SECRET:-sua-chave-super-secreta-mude-em-producao}
-      JWT_EXPIRES_IN: 7d
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mei_user}:${POSTGRES_PASSWORD:-mei_secret_2024}@postgres:5432/${POSTGRES_DB:-mei_control}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-seu-jwt-secret-super-seguro-mudar-em-producao}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    volumes:
+      - uploads_data:/app/uploads
     ports:
       - "3001:3001"
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      - mei-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # ============================================
-  # FRONTEND (React + Nginx)
-  # ============================================
+  # Frontend
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api/v1
     container_name: mei-frontend
     restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
       - backend
-    networks:
-      - mei-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-# ============================================
-# VOLUMES
-# ============================================
 volumes:
   postgres_data:
-    driver: local
+  uploads_data:
 
-# ============================================
-# NETWORKS
-# ============================================
 networks:
-  mei-network:
-    driver: bridge
+  default:
+    name: mei-network

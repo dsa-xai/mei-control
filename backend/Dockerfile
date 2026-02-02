@@ -1,27 +1,25 @@
-# ============================================
-# MEI Control - Backend Dockerfile
-# ============================================
+FROM node:20-alpine
 
-FROM node:20-slim
-
-# Instalar OpenSSL (necessário para Prisma)
-RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
-
-# Criar diretório da aplicação
 WORKDIR /app
+
+# Instalar dependências do sistema
+RUN apk add --no-cache openssl
 
 # Copiar arquivos de dependências
 COPY package*.json ./
 COPY prisma ./prisma/
 
 # Instalar dependências
-RUN npm install --omit=dev
+RUN npm ci --only=production
 
-# Gerar cliente Prisma
+# Gerar Prisma Client
 RUN npx prisma generate
 
 # Copiar código fonte
-COPY . .
+COPY src ./src
+
+# Criar diretório para uploads
+RUN mkdir -p uploads
 
 # Expor porta
 EXPOSE 3001
@@ -30,5 +28,9 @@ EXPOSE 3001
 ENV NODE_ENV=production
 ENV PORT=3001
 
-# Comando para iniciar
-CMD ["node", "src/server.js"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
+
+# Comando de inicialização
+CMD ["sh", "-c", "npx prisma migrate deploy && node src/server.js"]

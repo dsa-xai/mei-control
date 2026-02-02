@@ -1,7 +1,3 @@
-// ============================================
-// Seed do Banco de Dados
-// ============================================
-
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
@@ -10,213 +6,301 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Iniciando seed do banco de dados...');
 
-  // Limpar dados existentes (em ordem de dependência)
+  // Limpar dados existentes
   await prisma.logAtividade.deleteMany();
   await prisma.notificacao.deleteMany();
-  await prisma.declaracaoAnual.deleteMany();
-  await prisma.dASGuia.deleteMany();
+  await prisma.faturamento.deleteMany();
+  await prisma.dAS.deleteMany();
   await prisma.notaFiscal.deleteMany();
+  await prisma.solicitacaoNota.deleteMany();
   await prisma.cliente.deleteMany();
   await prisma.mEI.deleteMany();
   await prisma.sessao.deleteMany();
   await prisma.usuario.deleteMany();
-  await prisma.configuracaoSistema.deleteMany();
 
   console.log('✅ Dados antigos removidos');
 
-  // Criar usuário demo
-  const senhaHash = await bcrypt.hash('123456', 12);
-  
-  const usuario = await prisma.usuario.create({
+  // Criar senha hash
+  const senhaHash = await bcrypt.hash('123456', 10);
+
+  // Criar usuário Admin
+  const admin = await prisma.usuario.create({
     data: {
-      nome: 'João Empreendedor',
-      email: 'joao@exemplo.com',
-      cpf: '12345678900',
+      email: 'admin@meicontrol.com',
       senha: senhaHash,
+      nome: 'Administrador',
+      cpf: '00000000000',
       telefone: '21999999999',
-      emailVerificado: true
+      role: 'ADMIN',
+      ativo: true,
+      emailVerificado: true,
+      primeiroAcesso: false
     }
   });
+  console.log('✅ Admin criado:', admin.email);
 
-  console.log('✅ Usuário demo criado');
-
-  // Criar MEI
-  const mei = await prisma.mEI.create({
+  // Criar usuário Cliente 1
+  const cliente1 = await prisma.usuario.create({
     data: {
-      usuarioId: usuario.id,
-      cnpj: '45123456000178',
-      razaoSocial: 'JOAO EMPREENDEDOR MEI',
-      nomeFantasia: 'Tech Solutions',
-      dataAbertura: new Date('2024-03-15'),
-      cnaePrincipal: '6201500',
-      cnaeDescricao: 'Desenvolvimento de programas de computador sob encomenda',
-      cep: '20040020',
-      logradouro: 'Rua da Assembleia',
-      numero: '100',
-      complemento: 'Sala 501',
-      bairro: 'Centro',
+      email: 'maria@email.com',
+      senha: senhaHash,
+      nome: 'Maria Silva',
+      cpf: '12345678900',
+      telefone: '21988881111',
+      role: 'CLIENTE',
+      ativo: true,
+      emailVerificado: true,
+      primeiroAcesso: false
+    }
+  });
+  console.log('✅ Cliente 1 criado:', cliente1.email);
+
+  // Criar usuário Cliente 2
+  const cliente2 = await prisma.usuario.create({
+    data: {
+      email: 'joao@email.com',
+      senha: senhaHash,
+      nome: 'João Santos',
+      cpf: '98765432100',
+      telefone: '21988882222',
+      role: 'CLIENTE',
+      ativo: true,
+      emailVerificado: true,
+      primeiroAcesso: false
+    }
+  });
+  console.log('✅ Cliente 2 criado:', cliente2.email);
+
+  // Criar MEI 1
+  const mei1 = await prisma.mEI.create({
+    data: {
+      usuarioId: cliente1.id,
+      cnpj: '12345678000190',
+      razaoSocial: 'Maria Silva MEI',
+      nomeFantasia: 'MS Consultoria',
+      atividadePrincipal: 'Consultoria em gestão empresarial',
+      cnaePrincipal: '7020-4/00',
+      endereco: 'Rua das Flores, 123',
       cidade: 'Rio de Janeiro',
-      uf: 'RJ',
-      tetoAnual: 81000,
-      alertaPercentual: 80
+      estado: 'RJ',
+      cep: '20000000',
+      dataAbertura: new Date('2023-01-15'),
+      situacao: 'ATIVA'
+    }
+  });
+  console.log('✅ MEI 1 criado:', mei1.nomeFantasia);
+
+  // Criar MEI 2
+  const mei2 = await prisma.mEI.create({
+    data: {
+      usuarioId: cliente2.id,
+      cnpj: '98765432000110',
+      razaoSocial: 'João Santos MEI',
+      nomeFantasia: 'JS Tecnologia',
+      atividadePrincipal: 'Desenvolvimento de software',
+      cnaePrincipal: '6201-5/00',
+      endereco: 'Av. Brasil, 456',
+      cidade: 'São Paulo',
+      estado: 'SP',
+      cep: '01000000',
+      dataAbertura: new Date('2022-06-20'),
+      situacao: 'ATIVA'
+    }
+  });
+  console.log('✅ MEI 2 criado:', mei2.nomeFantasia);
+
+  // Criar clientes (tomadores de serviço)
+  const tomador1 = await prisma.cliente.create({
+    data: {
+      meiId: mei1.id,
+      tipo: 'PJ',
+      nome: 'Tech Solutions Ltda',
+      cpfCnpj: '11222333000144',
+      email: 'contato@techsolutions.com',
+      telefone: '1133334444',
+      cidade: 'São Paulo',
+      estado: 'SP'
     }
   });
 
-  console.log('✅ MEI demo criado');
+  const tomador2 = await prisma.cliente.create({
+    data: {
+      meiId: mei1.id,
+      tipo: 'PF',
+      nome: 'Carlos Oliveira',
+      cpfCnpj: '11122233344',
+      email: 'carlos@email.com',
+      telefone: '21977776666'
+    }
+  });
 
-  // Criar clientes
-  const clientes = await Promise.all([
-    prisma.cliente.create({
-      data: {
-        meiId: mei.id,
-        tipo: 'PJ',
-        nome: 'Tech Solutions Ltda',
-        cpfCnpj: '12345678000190',
-        email: 'contato@techsolutions.com',
-        telefone: '21999991234',
-        cidade: 'Rio de Janeiro',
-        uf: 'RJ'
-      }
-    }),
-    prisma.cliente.create({
-      data: {
-        meiId: mei.id,
-        tipo: 'PJ',
-        nome: 'Comércio Digital ME',
-        cpfCnpj: '98765432000110',
-        email: 'financeiro@comerciodigital.com',
-        telefone: '21988885678',
-        cidade: 'São Paulo',
-        uf: 'SP'
-      }
-    }),
-    prisma.cliente.create({
-      data: {
-        meiId: mei.id,
-        tipo: 'PF',
-        nome: 'Maria Silva',
-        cpfCnpj: '12345678900',
-        email: 'maria@email.com',
-        telefone: '21977779012',
-        cidade: 'Rio de Janeiro',
-        uf: 'RJ'
-      }
-    })
-  ]);
+  const tomador3 = await prisma.cliente.create({
+    data: {
+      meiId: mei2.id,
+      tipo: 'PJ',
+      nome: 'Startup Inovação SA',
+      cpfCnpj: '55666777000188',
+      email: 'financeiro@startup.com',
+      telefone: '1144445555'
+    }
+  });
+  console.log('✅ Clientes/Tomadores criados');
 
-  console.log('✅ Clientes demo criados');
-
-  // Criar notas fiscais (ano atual)
+  // Criar faturamentos mensais para MEI 1 (simulando ~70% do teto)
   const anoAtual = new Date().getFullYear();
-  const notas = [
-    { cliente: 0, valor: 3500, descricao: 'Consultoria em TI', mes: 0 },
-    { cliente: 1, valor: 2800, descricao: 'Desenvolvimento de Sistema', mes: 1 },
-    { cliente: 0, valor: 4200, descricao: 'Manutenção de Software', mes: 2 },
-    { cliente: 2, valor: 1500, descricao: 'Suporte Técnico', mes: 3 },
-    { cliente: 1, valor: 5600, descricao: 'Integração de Sistemas', mes: 4 },
-    { cliente: 0, valor: 3200, descricao: 'Análise de Dados', mes: 5 },
-    { cliente: 2, valor: 2100, descricao: 'Treinamento', mes: 6 },
-    { cliente: 1, valor: 4800, descricao: 'Desenvolvimento Web', mes: 7 },
-    { cliente: 0, valor: 6200, descricao: 'Projeto Especial', mes: 8 },
-    { cliente: 1, valor: 3800, descricao: 'Consultoria', mes: 9 },
-    { cliente: 2, valor: 2500, descricao: 'Suporte Mensal', mes: 10 },
-    { cliente: 0, valor: 5100, descricao: 'Automação', mes: 11 }
-  ];
+  const mesAtual = new Date().getMonth() + 1;
 
-  for (let i = 0; i < notas.length; i++) {
-    const nota = notas[i];
-    const dataEmissao = new Date(anoAtual, nota.mes, 15);
-    
-    await prisma.notaFiscal.create({
+  for (let mes = 1; mes <= mesAtual; mes++) {
+    const valor = 4500 + Math.random() * 1500; // Entre 4500 e 6000
+    await prisma.faturamento.create({
       data: {
-        meiId: mei.id,
-        clienteId: clientes[nota.cliente].id,
-        numero: String(i + 1).padStart(6, '0'),
-        valor: nota.valor,
-        descricao: nota.descricao,
-        dataEmissao,
-        dataCompetencia: dataEmissao,
-        status: 'EMITIDA'
+        meiId: mei1.id,
+        ano: anoAtual,
+        mes,
+        valor,
+        quantidadeNotas: Math.floor(valor / 1500)
       }
     });
   }
+  console.log('✅ Faturamentos MEI 1 criados');
 
-  console.log('✅ Notas fiscais demo criadas');
-
-  // Criar guias DAS
-  const salarioMinimo = 1518;
-  const valorDAS = salarioMinimo * 0.05 + 5; // INSS + ISS
-
-  for (let mes = 0; mes < 12; mes++) {
-    const competencia = new Date(anoAtual, mes, 1);
-    const vencimento = new Date(anoAtual, mes, 20);
-    const hoje = new Date();
-
-    await prisma.dASGuia.create({
+  // Criar faturamentos para MEI 2 (simulando ~40% do teto)
+  for (let mes = 1; mes <= mesAtual; mes++) {
+    const valor = 2000 + Math.random() * 1000; // Entre 2000 e 3000
+    await prisma.faturamento.create({
       data: {
-        meiId: mei.id,
-        competencia,
-        vencimento,
-        valor: valorDAS,
-        valorInss: salarioMinimo * 0.05,
-        valorIcms: 0,
-        valorIss: 5,
-        status: vencimento < hoje ? 'PAGO' : 'PENDENTE',
-        dataPagamento: vencimento < hoje ? vencimento : null
+        meiId: mei2.id,
+        ano: anoAtual,
+        mes,
+        valor,
+        quantidadeNotas: Math.floor(valor / 1000)
       }
     });
   }
+  console.log('✅ Faturamentos MEI 2 criados');
 
-  console.log('✅ Guias DAS demo criadas');
+  // Criar notas fiscais de exemplo
+  const nota1 = await prisma.notaFiscal.create({
+    data: {
+      meiId: mei1.id,
+      clienteId: tomador1.id,
+      numero: 1,
+      dataEmissao: new Date(),
+      descricao: 'Consultoria em processos empresariais - Dezembro',
+      valor: 3500,
+      status: 'EMITIDA',
+      codigoVerificacao: 'ABC12345'
+    }
+  });
+
+  const nota2 = await prisma.notaFiscal.create({
+    data: {
+      meiId: mei1.id,
+      clienteId: tomador2.id,
+      numero: 2,
+      dataEmissao: new Date(),
+      descricao: 'Mentoria individual - 4 sessões',
+      valor: 1200,
+      status: 'EMITIDA',
+      codigoVerificacao: 'DEF67890'
+    }
+  });
+
+  const nota3 = await prisma.notaFiscal.create({
+    data: {
+      meiId: mei2.id,
+      clienteId: tomador3.id,
+      numero: 1,
+      dataEmissao: new Date(),
+      descricao: 'Desenvolvimento de aplicativo mobile',
+      valor: 4000,
+      status: 'EMITIDA',
+      codigoVerificacao: 'GHI11111'
+    }
+  });
+  console.log('✅ Notas fiscais criadas');
+
+  // Criar DAS pendentes
+  const competenciaAtual = new Date(anoAtual, mesAtual - 1, 1);
+  const vencimento = new Date(anoAtual, mesAtual - 1, 20);
+
+  await prisma.dAS.create({
+    data: {
+      meiId: mei1.id,
+      competencia: competenciaAtual,
+      dataVencimento: vencimento,
+      valor: 71.60,
+      status: 'PENDENTE'
+    }
+  });
+
+  await prisma.dAS.create({
+    data: {
+      meiId: mei2.id,
+      competencia: competenciaAtual,
+      dataVencimento: vencimento,
+      valor: 67.00,
+      status: 'PENDENTE'
+    }
+  });
+  console.log('✅ Guias DAS criadas');
+
+  // Criar solicitação de nota pendente
+  await prisma.solicitacaoNota.create({
+    data: {
+      meiId: mei1.id,
+      solicitanteId: cliente1.id,
+      descricao: 'Serviço de consultoria para empresa ABC - Projeto de otimização',
+      valor: 2500,
+      tomadorNome: 'Empresa ABC Ltda',
+      tomadorCpfCnpj: '99888777000166',
+      tomadorEmail: 'nf@empresaabc.com',
+      status: 'PENDENTE'
+    }
+  });
+  console.log('✅ Solicitação de nota criada');
 
   // Criar notificações de exemplo
-  await prisma.notificacao.createMany({
-    data: [
-      {
-        usuarioId: usuario.id,
-        tipo: 'SISTEMA',
-        titulo: 'Bem-vindo ao MEI Control!',
-        mensagem: 'Seu sistema de gestão de notas fiscais está pronto para uso.',
-        prioridade: 'NORMAL'
-      },
-      {
-        usuarioId: usuario.id,
-        tipo: 'ALERTA_TETO',
-        titulo: 'Atenção com o Faturamento',
-        mensagem: 'Você atingiu 55% do teto anual do MEI. Monitore suas emissões.',
-        prioridade: 'NORMAL'
-      }
-    ]
+  await prisma.notificacao.create({
+    data: {
+      usuarioId: cliente1.id,
+      tipo: 'TETO_ATENCAO',
+      titulo: '📊 Atenção ao Teto MEI',
+      mensagem: 'Você atingiu 70% do teto anual de faturamento.',
+      dados: { percentual: 70 }
+    }
   });
 
-  console.log('✅ Notificações demo criadas');
-
-  // Criar configurações do sistema
-  await prisma.configuracaoSistema.createMany({
-    data: [
-      { chave: 'MEI_TETO_ANUAL', valor: '81000', descricao: 'Teto anual do MEI em reais', tipo: 'NUMBER' },
-      { chave: 'MEI_TETO_CAMINHONEIRO', valor: '251600', descricao: 'Teto anual do MEI Caminhoneiro', tipo: 'NUMBER' },
-      { chave: 'MEI_ALERTA_PERCENTUAL', valor: '80', descricao: 'Percentual para alerta de teto', tipo: 'NUMBER' },
-      { chave: 'SALARIO_MINIMO', valor: '1518', descricao: 'Valor do salário mínimo', tipo: 'NUMBER' },
-      { chave: 'DAS_ISS', valor: '5', descricao: 'Valor do ISS no DAS', tipo: 'NUMBER' },
-      { chave: 'DAS_ICMS', valor: '1', descricao: 'Valor do ICMS no DAS', tipo: 'NUMBER' }
-    ]
+  await prisma.notificacao.create({
+    data: {
+      usuarioId: admin.id,
+      tipo: 'NOTA_SOLICITADA',
+      titulo: 'Nova Solicitação de Nota',
+      mensagem: 'Maria Silva solicitou emissão de nota no valor de R$ 2.500,00',
+      dados: { valor: 2500 }
+    }
   });
+  console.log('✅ Notificações criadas');
 
-  console.log('✅ Configurações do sistema criadas');
-
-  console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║                                                           ║
-║   🎉 Seed concluído com sucesso!                          ║
-║                                                           ║
-║   Usuário demo:                                           ║
-║   Email: joao@exemplo.com                                 ║
-║   CPF: 123.456.789-00                                     ║
-║   Senha: 123456                                           ║
-║                                                           ║
-╚═══════════════════════════════════════════════════════════╝
-  `);
+  console.log('\n========================================');
+  console.log('🎉 Seed concluído com sucesso!');
+  console.log('========================================');
+  console.log('\n📋 Credenciais de acesso:');
+  console.log('----------------------------------------');
+  console.log('👤 Admin:');
+  console.log('   CPF: 000.000.000-00');
+  console.log('   Senha: 123456');
+  console.log('----------------------------------------');
+  console.log('👤 Cliente 1 (Maria):');
+  console.log('   CPF: 123.456.789-00');
+  console.log('   CNPJ: 12.345.678/0001-90');
+  console.log('   Senha: 123456');
+  console.log('----------------------------------------');
+  console.log('👤 Cliente 2 (João):');
+  console.log('   CPF: 987.654.321-00');
+  console.log('   CNPJ: 98.765.432/0001-10');
+  console.log('   Senha: 123456');
+  console.log('========================================\n');
 }
 
 main()

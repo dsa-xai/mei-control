@@ -1,5 +1,5 @@
 // Schema do Banco de Dados - MEI Control
-// Usando Prisma ORM com PostgreSQL
+// Prisma ORM com PostgreSQL
 
 generator client {
   provider = "prisma-client-js"
@@ -21,15 +21,22 @@ model Usuario {
   nome            String
   cpf             String    @unique
   telefone        String?
+  telefoneWhatsApp String?  @map("telefone_whatsapp")
+  role            String    @default("CLIENTE") // ADMIN, CLIENTE
+  
+  tokenAcesso     String?   @unique @map("token_acesso")
+  tokenExpira     DateTime? @map("token_expira")
+  
   ativo           Boolean   @default(true)
   emailVerificado Boolean   @default(false) @map("email_verificado")
+  primeiroAcesso  Boolean   @default(true) @map("primeiro_acesso")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  // Relacionamentos
   meis            MEI[]
   sessoes         Sessao[]
   notificacoes    Notificacao[]
+  solicitacoesFeitas SolicitacaoNota[] @relation("SolicitanteRelation")
 
   @@map("usuarios")
 }
@@ -45,85 +52,74 @@ model Sessao {
 
   usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
+  @@index([usuarioId])
   @@map("sessoes")
 }
 
 // ============================================
-// MEI - MICROEMPREENDEDOR INDIVIDUAL
+// MEI E DADOS FISCAIS
 // ============================================
 
 model MEI {
-  id              String    @id @default(uuid())
-  usuarioId       String    @map("usuario_id")
-  cnpj            String    @unique
-  razaoSocial     String    @map("razao_social")
-  nomeFantasia    String?   @map("nome_fantasia")
-  dataAbertura    DateTime  @map("data_abertura")
-  cnaePrincipal   String    @map("cnae_principal")
-  cnaeDescricao   String?   @map("cnae_descricao")
+  id              String   @id @default(uuid())
+  usuarioId       String   @map("usuario_id")
   
-  // Endereço
-  cep             String?
-  logradouro      String?
-  numero          String?
-  complemento     String?
-  bairro          String?
+  cnpj            String   @unique
+  razaoSocial     String   @map("razao_social")
+  nomeFantasia    String?  @map("nome_fantasia")
+  
+  atividadePrincipal String? @map("atividade_principal")
+  cnaePrincipal   String?  @map("cnae_principal")
+  
+  endereco        String?
   cidade          String?
-  uf              String?
+  estado          String?
+  cep             String?
   
-  // Configurações
-  tetoAnual       Decimal   @default(81000) @map("teto_anual") @db.Decimal(12, 2)
-  alertaPercentual Int      @default(80) @map("alerta_percentual")
+  inscricaoMunicipal String? @map("inscricao_municipal")
+  inscricaoEstadual  String? @map("inscricao_estadual")
   
-  // Status
-  ativo           Boolean   @default(true)
-  situacao        String    @default("ATIVA") // ATIVA, SUSPENSA, BAIXADA
+  dataAbertura    DateTime? @map("data_abertura")
+  situacao        String    @default("ATIVA")
+  
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  // Relacionamentos
   usuario         Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  clientes        Cliente[]
   notasFiscais    NotaFiscal[]
-  dasGuias        DASGuia[]
-  declaracoes     DeclaracaoAnual[]
+  clientes        Cliente[]
+  das             DAS[]
+  faturamentos    Faturamento[]
+  solicitacoes    SolicitacaoNota[]
 
+  @@index([usuarioId])
   @@map("meis")
 }
 
-// ============================================
-// CLIENTES
-// ============================================
-
 model Cliente {
-  id              String    @id @default(uuid())
-  meiId           String    @map("mei_id")
-  tipo            String    @default("PJ") // PF ou PJ
-  nome            String
-  cpfCnpj         String    @map("cpf_cnpj")
-  email           String?
-  telefone        String?
+  id          String   @id @default(uuid())
+  meiId       String   @map("mei_id")
   
-  // Endereço
-  cep             String?
-  logradouro      String?
-  numero          String?
-  complemento     String?
-  bairro          String?
-  cidade          String?
-  uf              String?
+  tipo        String   @default("PJ") // PF, PJ
+  nome        String
+  cpfCnpj     String   @map("cpf_cnpj")
+  email       String?
+  telefone    String?
+  endereco    String?
+  cidade      String?
+  estado      String?
+  cep         String?
   
-  // Metadados
-  observacoes     String?
-  ativo           Boolean   @default(true)
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  ativo       Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  // Relacionamentos
-  mei             MEI       @relation(fields: [meiId], references: [id], onDelete: Cascade)
-  notasFiscais    NotaFiscal[]
+  mei         MEI      @relation(fields: [meiId], references: [id], onDelete: Cascade)
+  notasFiscais NotaFiscal[]
+  solicitacoes SolicitacaoNota[]
 
   @@unique([meiId, cpfCnpj])
+  @@index([meiId])
   @@map("clientes")
 }
 
@@ -134,113 +130,132 @@ model Cliente {
 model NotaFiscal {
   id              String    @id @default(uuid())
   meiId           String    @map("mei_id")
-  clienteId       String    @map("cliente_id")
+  clienteId       String?   @map("cliente_id")
+  solicitacaoId   String?   @unique @map("solicitacao_id")
   
-  // Dados da Nota
-  numero          String
+  numero          Int
   serie           String    @default("1")
-  valor           Decimal   @db.Decimal(12, 2)
-  descricao       String
   
-  // Datas
   dataEmissao     DateTime  @map("data_emissao")
-  dataCompetencia DateTime  @map("data_competencia")
+  dataCompetencia DateTime? @map("data_competencia")
   
-  // Status
-  status          String    @default("EMITIDA") // RASCUNHO, EMITIDA, CANCELADA
+  descricao       String
+  valor           Decimal   @db.Decimal(15, 2)
+  
+  impostoIss      Decimal?  @db.Decimal(15, 2) @map("imposto_iss")
+  aliquotaIss     Decimal?  @db.Decimal(5, 2) @map("aliquota_iss")
+  
+  status          String    @default("EMITIDA") // EMITIDA, CANCELADA, SUBSTITUIDA
   motivoCancelamento String? @map("motivo_cancelamento")
-  dataCancelamento DateTime? @map("data_cancelamento")
   
-  // Integração (para uso futuro com NFS-e)
   codigoVerificacao String? @map("codigo_verificacao")
-  linkPdf         String?   @map("link_pdf")
-  xmlNota         String?   @map("xml_nota")
+  xmlUrl          String?   @map("xml_url")
+  pdfUrl          String?   @map("pdf_url")
   
-  // Metadados
-  observacoes     String?
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  // Relacionamentos
   mei             MEI       @relation(fields: [meiId], references: [id], onDelete: Cascade)
-  cliente         Cliente   @relation(fields: [clienteId], references: [id])
+  cliente         Cliente?  @relation(fields: [clienteId], references: [id])
+  solicitacao     SolicitacaoNota? @relation(fields: [solicitacaoId], references: [id])
 
   @@unique([meiId, numero, serie])
-  @@index([meiId, dataEmissao])
-  @@index([meiId, status])
+  @@index([meiId])
+  @@index([dataEmissao])
   @@map("notas_fiscais")
 }
 
 // ============================================
-// DAS - DOCUMENTO DE ARRECADAÇÃO
+// SOLICITAÇÕES DE NOTA (CLIENTES)
 // ============================================
 
-model DASGuia {
+model SolicitacaoNota {
   id              String    @id @default(uuid())
   meiId           String    @map("mei_id")
+  clienteId       String?   @map("cliente_id")
+  solicitanteId   String    @map("solicitante_id")
   
-  // Dados da Guia
-  competencia     DateTime  // Mês/Ano de referência
-  vencimento      DateTime
-  valor           Decimal   @db.Decimal(10, 2)
+  // Dados da solicitação
+  descricao       String
+  valor           Decimal   @db.Decimal(15, 2)
   
-  // Composição do valor
-  valorInss       Decimal   @map("valor_inss") @db.Decimal(10, 2)
-  valorIcms       Decimal   @default(0) @map("valor_icms") @db.Decimal(10, 2)
-  valorIss        Decimal   @default(0) @map("valor_iss") @db.Decimal(10, 2)
+  // Áudio da descrição (opcional)
+  audioUrl        String?   @map("audio_url")
+  audioTranscricao String?  @map("audio_transcricao")
   
-  // Status
-  status          String    @default("PENDENTE") // PENDENTE, PAGO, VENCIDO, PARCELADO
-  dataPagamento   DateTime? @map("data_pagamento")
+  // Dados do tomador (se diferente do cliente)
+  tomadorNome     String?   @map("tomador_nome")
+  tomadorCpfCnpj  String?   @map("tomador_cpf_cnpj")
+  tomadorEmail    String?   @map("tomador_email")
   
-  // Código de barras / Pix
-  linhaDigitavel  String?   @map("linha_digitavel")
-  codigoBarras    String?   @map("codigo_barras")
-  qrCodePix       String?   @map("qr_code_pix")
+  // Workflow
+  status          String    @default("PENDENTE") // PENDENTE, EM_ANDAMENTO, EMITIDA, REJEITADA
+  observacao      String?
+  motivoRejeicao  String?   @map("motivo_rejeicao")
   
-  // Metadados
+  processadoPor   String?   @map("processado_por")
+  processadoEm    DateTime? @map("processado_em")
+  
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  // Relacionamentos
   mei             MEI       @relation(fields: [meiId], references: [id], onDelete: Cascade)
+  cliente         Cliente?  @relation(fields: [clienteId], references: [id])
+  solicitante     Usuario   @relation("SolicitanteRelation", fields: [solicitanteId], references: [id])
+  notaFiscal      NotaFiscal?
 
-  @@unique([meiId, competencia])
-  @@map("das_guias")
+  @@index([meiId])
+  @@index([status])
+  @@map("solicitacoes_notas")
 }
 
 // ============================================
-// DECLARAÇÃO ANUAL (DASN-SIMEI)
+// DAS E FATURAMENTO
 // ============================================
 
-model DeclaracaoAnual {
-  id                  String    @id @default(uuid())
-  meiId               String    @map("mei_id")
-  anoCalendario       Int       @map("ano_calendario")
+model DAS {
+  id              String    @id @default(uuid())
+  meiId           String    @map("mei_id")
   
-  // Valores declarados
-  receitaBrutaTotal   Decimal   @map("receita_bruta_total") @db.Decimal(12, 2)
-  receitaComercio     Decimal   @default(0) @map("receita_comercio") @db.Decimal(12, 2)
-  receitaIndustria    Decimal   @default(0) @map("receita_industria") @db.Decimal(12, 2)
-  receitaServicos     Decimal   @default(0) @map("receita_servicos") @db.Decimal(12, 2)
+  competencia     DateTime  // Mês/Ano de referência
+  dataVencimento  DateTime  @map("data_vencimento")
+  dataPagamento   DateTime? @map("data_pagamento")
   
-  // Funcionário
-  possuiFuncionario   Boolean   @default(false) @map("possui_funcionario")
+  valor           Decimal   @db.Decimal(15, 2)
+  valorPago       Decimal?  @db.Decimal(15, 2) @map("valor_pago")
   
-  // Status
-  status              String    @default("RASCUNHO") // RASCUNHO, ENVIADA, RETIFICADORA
-  dataEnvio           DateTime? @map("data_envio")
-  numeroRecibo        String?   @map("numero_recibo")
+  status          String    @default("PENDENTE") // PENDENTE, PAGO, ATRASADO, PARCELADO
+  codigoBarras    String?   @map("codigo_barras")
+  linhaDigitavel  String?   @map("linha_digitavel")
   
-  // Metadados
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  // Relacionamentos
-  mei                 MEI       @relation(fields: [meiId], references: [id], onDelete: Cascade)
+  mei             MEI       @relation(fields: [meiId], references: [id], onDelete: Cascade)
 
-  @@unique([meiId, anoCalendario])
-  @@map("declaracoes_anuais")
+  @@unique([meiId, competencia])
+  @@index([meiId])
+  @@index([dataVencimento])
+  @@map("das")
+}
+
+model Faturamento {
+  id              String   @id @default(uuid())
+  meiId           String   @map("mei_id")
+  
+  ano             Int
+  mes             Int
+  valor           Decimal  @db.Decimal(15, 2)
+  quantidadeNotas Int      @default(0) @map("quantidade_notas")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  mei             MEI      @relation(fields: [meiId], references: [id], onDelete: Cascade)
+
+  @@unique([meiId, ano, mes])
+  @@index([meiId])
+  @@map("faturamentos")
 }
 
 // ============================================
@@ -248,66 +263,46 @@ model DeclaracaoAnual {
 // ============================================
 
 model Notificacao {
-  id              String    @id @default(uuid())
-  usuarioId       String    @map("usuario_id")
+  id          String    @id @default(uuid())
+  usuarioId   String    @map("usuario_id")
   
-  tipo            String    // ALERTA_TETO, VENCIMENTO_DAS, DECLARACAO_ANUAL, SISTEMA
-  titulo          String
-  mensagem        String
-  prioridade      String    @default("NORMAL") // BAIXA, NORMAL, ALTA, CRITICA
+  tipo        String    // ALERTA_TETO, DAS_VENCENDO, NOTA_SOLICITADA, NOTA_EMITIDA, etc
+  titulo      String
+  mensagem    String
+  dados       Json?
   
-  lida            Boolean   @default(false)
-  dataLeitura     DateTime? @map("data_leitura")
+  lida        Boolean   @default(false)
+  lidaEm      DateTime? @map("lida_em")
   
-  // Link de ação (opcional)
-  linkAcao        String?   @map("link_acao")
-  
-  createdAt       DateTime  @default(now()) @map("created_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
 
-  // Relacionamentos
-  usuario         Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
-  @@index([usuarioId, lida])
+  @@index([usuarioId])
+  @@index([lida])
   @@map("notificacoes")
 }
 
 // ============================================
-// CONFIGURAÇÕES DO SISTEMA
-// ============================================
-
-model ConfiguracaoSistema {
-  id              String    @id @default(uuid())
-  chave           String    @unique
-  valor           String
-  descricao       String?
-  tipo            String    @default("STRING") // STRING, NUMBER, BOOLEAN, JSON
-  editavel        Boolean   @default(true)
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-
-  @@map("configuracoes_sistema")
-}
-
-// ============================================
-// LOG DE ATIVIDADES (AUDITORIA)
+// LOGS DE ATIVIDADE
 // ============================================
 
 model LogAtividade {
-  id              String    @id @default(uuid())
-  usuarioId       String?   @map("usuario_id")
-  meiId           String?   @map("mei_id")
+  id              String   @id @default(uuid())
+  usuarioId       String?  @map("usuario_id")
+  meiId           String?  @map("mei_id")
   
-  acao            String    // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, etc
-  entidade        String    // Usuario, MEI, NotaFiscal, etc
-  entidadeId      String?   @map("entidade_id")
+  acao            String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, etc
+  entidade        String   // Usuario, MEI, NotaFiscal, etc
+  entidadeId      String?  @map("entidade_id")
   
-  dadosAntigos    Json?     @map("dados_antigos")
-  dadosNovos      Json?     @map("dados_novos")
+  dadosAntigos    Json?    @map("dados_antigos")
+  dadosNovos      Json?    @map("dados_novos")
   
   ip              String?
-  userAgent       String?   @map("user_agent")
+  userAgent       String?  @map("user_agent")
   
-  createdAt       DateTime  @default(now()) @map("created_at")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   @@index([usuarioId])
   @@index([meiId])

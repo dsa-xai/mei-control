@@ -19,10 +19,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             border: '1px solid #334155'
           },
           success: {
-            iconTheme: { primary: '#22d3ee', secondary: '#0f172a' }
+            iconTheme: { primary: '#22c55e', secondary: '#f1f5f9' }
           },
           error: {
-            iconTheme: { primary: '#f43f5e', secondary: '#0f172a' }
+            iconTheme: { primary: '#ef4444', secondary: '#f1f5f9' }
           }
         }}
       />

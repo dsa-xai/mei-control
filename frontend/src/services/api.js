@@ -1,97 +1,129 @@
-import axios from 'axios'
-import toast from 'react-hot-toast'
+import axios from 'axios';
+import toast from 'react-hot-toast';
+
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://mei-control-production.up.railway.app/api/v1',
+  baseURL: API_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
   }
-})
+});
 
-// Interceptor de requisição
+// Interceptor para adicionar token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('mei-control-token')
+    const token = localStorage.getItem('mei_token');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    return config
+    return config;
   },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
+  (error) => Promise.reject(error)
+);
 
-// Interceptor de resposta
+// Interceptor para tratar erros
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const message = error.response?.data?.error || 'Erro de conexão com o servidor'
-    
-    if (error.response?.status === 401) {
-      localStorage.removeItem('mei-control-token')
-      window.location.href = '/login'
-      return Promise.reject(error)
+    if (error.response) {
+      const { status, data } = error.response;
+      
+      if (status === 401) {
+        localStorage.removeItem('mei_token');
+        localStorage.removeItem('mei_usuario');
+        localStorage.removeItem('mei_atual');
+        window.location.href = '/login';
+        toast.error('Sessão expirada. Faça login novamente.');
+      } else if (status === 403) {
+        toast.error('Você não tem permissão para esta ação.');
+      } else if (status === 429) {
+        toast.error('Muitas requisições. Aguarde um momento.');
+      } else {
+        toast.error(data?.error || 'Erro ao processar requisição.');
+      }
+    } else if (error.request) {
+      toast.error('Servidor não responde. Verifique sua conexão.');
     }
-    
-    if (error.response?.status === 429) {
-      toast.error('Muitas requisições. Aguarde um momento.')
-    }
-    
-    return Promise.reject(error)
+    return Promise.reject(error);
   }
-)
+);
 
-export default api
+// Auth
+export const authAPI = {
+  login: (cpf, senha) => api.post('/auth/login', { cpf, senha }),
+  loginCnpj: (cnpj, senha) => api.post('/auth/login-cnpj', { cnpj, senha }),
+  me: () => api.get('/auth/me'),
+  logout: () => api.post('/auth/logout')
+};
 
-export const authService = {
-  login: (documento, senha) => api.post('/auth/login', { documento, senha }),
-  registro: (dados) => api.post('/auth/registro', dados),
-  logout: () => api.post('/auth/logout'),
-  me: () => api.get('/auth/me')
-}
+// Dashboard
+export const dashboardAPI = {
+  admin: () => api.get('/dashboard/admin'),
+  cliente: (meiId) => api.get('/dashboard/cliente', { params: { meiId } })
+};
 
-export const meiService = {
-  listar: () => api.get('/meis'),
-  obter: (id) => api.get(`/meis/${id}`),
-  criar: (dados) => api.post('/meis', dados),
-  faturamento: (id, ano) => api.get(`/meis/${id}/faturamento`, { params: { ano } })
-}
+// MEIs
+export const meiAPI = {
+  listar: (params) => api.get('/meis', { params }),
+  buscar: (id) => api.get(`/meis/${id}`),
+  criar: (data) => api.post('/meis', data),
+  atualizar: (id, data) => api.put(`/meis/${id}`, data),
+  deletar: (id) => api.delete(`/meis/${id}`)
+};
 
-export const clienteService = {
-  listar: (meiId, params = {}) => api.get('/clientes', { params: { meiId, ...params } }),
-  obter: (id) => api.get(`/clientes/${id}`),
-  criar: (dados) => api.post('/clientes', dados),
-  atualizar: (id, dados) => api.put(`/clientes/${id}`, dados),
-  excluir: (id) => api.delete(`/clientes/${id}`)
-}
+// Notas Fiscais
+export const notaAPI = {
+  listar: (params) => api.get('/notas', { params }),
+  buscar: (id) => api.get(`/notas/${id}`),
+  emitir: (data) => api.post('/notas', data),
+  cancelar: (id, motivo) => api.post(`/notas/${id}/cancelar`, { motivo })
+};
 
-export const notaFiscalService = {
-  listar: (meiId, params = {}) => api.get('/notas-fiscais', { params: { meiId, ...params } }),
-  emitir: (dados) => api.post('/notas-fiscais', dados),
-  cancelar: (id, motivo) => api.post(`/notas-fiscais/${id}/cancelar`, { motivo })
-}
+// Solicitações
+export const solicitacaoAPI = {
+  listar: (params) => api.get('/solicitacoes', { params }),
+  buscar: (id) => api.get(`/solicitacoes/${id}`),
+  criar: (data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach(key => {
+      if (data[key] !== null && data[key] !== undefined) {
+        formData.append(key, data[key]);
+      }
+    });
+    return api.post('/solicitacoes', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  atualizarStatus: (id, data) => api.put(`/solicitacoes/${id}/status`, data),
+  gerarLinkWhatsApp: (telefone, mensagem) => api.post('/solicitacoes/whatsapp/link', { telefone, mensagem })
+};
 
-export const dasService = {
-  listar: (meiId, ano) => api.get('/das', { params: { meiId, ano } }),
-  gerar: (meiId, ano) => api.post('/das/gerar', { meiId, ano }),
-  registrarPagamento: (id, dataPagamento) => api.put(`/das/${id}/pagamento`, { dataPagamento })
-}
+// DAS
+export const dasAPI = {
+  listar: (params) => api.get('/das', { params }),
+  buscar: (id) => api.get(`/das/${id}`),
+  criar: (data) => api.post('/das', data),
+  pagar: (id, data) => api.post(`/das/${id}/pagar`, data),
+  gerarMensal: (data) => api.post('/das/gerar-mensal', data)
+};
 
-export const dashboardService = {
-  obter: (meiId, ano) => api.get(`/dashboard/${meiId}`, { params: { ano } }),
-  notificacoes: () => api.get('/dashboard/notificacoes')
-}
+// Clientes
+export const clienteAPI = {
+  listar: (params) => api.get('/clientes', { params }),
+  buscar: (id) => api.get(`/clientes/${id}`),
+  criar: (data) => api.post('/clientes', data),
+  atualizar: (id, data) => api.put(`/clientes/${id}`, data),
+  deletar: (id) => api.delete(`/clientes/${id}`)
+};
 
-export const relatorioService = {
-  faturamento: (meiId, ano, mes) => api.get('/relatorios/faturamento', { params: { meiId, ano, mes } }),
-  clientes: (meiId, ano) => api.get('/relatorios/clientes', { params: { meiId, ano } }),
-  das: (meiId, ano) => api.get('/relatorios/das', { params: { meiId, ano } })
-}
-
-export const notificacaoService = {
-  listar: () => api.get('/notificacoes'),
+// Notificações
+export const notificacaoAPI = {
+  listar: (params) => api.get('/notificacoes', { params }),
   marcarLida: (id) => api.put(`/notificacoes/${id}/lida`),
-  marcarTodasLidas: () => api.put('/notificacoes/marcar-todas-lidas')
-}
+  marcarTodasLidas: () => api.put('/notificacoes/marcar-todas-lidas'),
+  deletar: (id) => api.delete(`/notificacoes/${id}`)
+};
+
+export default api;

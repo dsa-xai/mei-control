@@ -1,222 +1,213 @@
-# 📊 MEI Control - Sistema de Gestão de Notas Fiscais para MEI
+# MEI Control v2.0
 
-Sistema completo para gestão de notas fiscais, controle de faturamento e obrigações fiscais para Microempreendedores Individuais (MEI).
+Sistema completo de gestão de notas fiscais para Microempreendedores Individuais (MEI).
 
-![MEI Control](https://img.shields.io/badge/MEI-Control-06b6d4?style=for-the-badge)
-![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=flat-square&logo=node.js)
-![React](https://img.shields.io/badge/React-18+-61DAFB?style=flat-square&logo=react)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-4169E1?style=flat-square&logo=postgresql)
+![Node.js](https://img.shields.io/badge/Node.js-20-green)
+![React](https://img.shields.io/badge/React-18-blue)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
+![Docker](https://img.shields.io/badge/Docker-Ready-blue)
 
-## ✨ Funcionalidades
+## 🚀 Funcionalidades
 
-- 🔐 **Autenticação segura** - Login por CPF ou CNPJ com JWT
-- 📊 **Dashboard completo** - Visão geral do faturamento e métricas
-- 📄 **Notas Fiscais** - Emissão, listagem e cancelamento
-- 👥 **Gestão de Clientes** - Cadastro PF e PJ
-- ⚠️ **Alertas de Teto** - Notificações automáticas ao atingir 80%, 95% e 100%
-- 📈 **Gráficos** - Visualização do faturamento mensal e acumulado
-- 💰 **DAS Mensal** - Controle de pagamentos
-- 📅 **Calendário** - Obrigações fiscais e vencimentos
-- 📱 **Responsivo** - Funciona em desktop e mobile
+### Para Administradores (Contadores)
+- ✅ Dashboard global com estatísticas de todos os MEIs
+- ✅ Gerenciamento completo de múltiplos MEIs
+- ✅ Emissão e cancelamento de notas fiscais
+- ✅ Validação de solicitações de clientes
+- ✅ Controle de DAS (pagamentos mensais)
+- ✅ Alertas progressivos de teto de faturamento
 
-## 🚀 Início Rápido
+### Para Clientes (MEI)
+- ✅ Dashboard personalizado com faturamento
+- ✅ Visualização de notas e DAS
+- ✅ Solicitação de notas com gravação de áudio
+- ✅ Acompanhamento de solicitações
+- ✅ Notificações em tempo real
 
-### Pré-requisitos
+### Sistema de Alertas
+| Nível | Percentual | Cor | Comportamento |
+|-------|------------|-----|---------------|
+| Seguro | 0-64% | Verde | Normal |
+| Atenção | 65-79% | Amarelo | Alerta visual |
+| Aviso | 80-94% | Laranja | Animação pulse |
+| Perigo | 95-99% | Vermelho | Urgente |
+| Crítico | 100%+ | Vermelho escuro | Bloqueia ações |
 
-- [Node.js](https://nodejs.org/) 18+ 
-- [Docker](https://docker.com/) e Docker Compose (recomendado)
-- Ou: PostgreSQL 14+ (se rodar sem Docker)
+## 🛠️ Tecnologias
 
-### Opção 1: Com Docker (Recomendado)
+**Backend:**
+- Node.js 20 + Express
+- Prisma ORM + PostgreSQL
+- JWT Authentication
+- Multer (uploads)
+- Node-cron (tarefas agendadas)
+
+**Frontend:**
+- React 18 + Vite
+- Tailwind CSS
+- Zustand (state)
+- React Router
+- Recharts (gráficos)
+- Lucide Icons
+
+## 📦 Instalação
+
+### Com Docker (Recomendado)
 
 ```bash
-# 1. Clone o repositório
-git clone https://github.com/seu-usuario/mei-control.git
+# Clonar repositório
+git clone <repo-url>
 cd mei-control
 
-# 2. Crie o arquivo de ambiente
+# Copiar variáveis de ambiente
 cp .env.example .env
 
-# 3. Suba os containers
-docker compose up -d
+# Editar .env com suas configurações
+nano .env
 
-# 4. Execute as migrations e seed
-docker compose exec backend npx prisma db push
-docker compose exec backend npm run db:seed
+# Subir containers
+docker-compose up -d
 
-# 5. Acesse
-# Frontend: http://localhost
-# Backend: http://localhost:3001
+# Executar seed (primeira vez)
+docker-compose exec backend npx prisma db seed
 ```
 
-### Opção 2: Desenvolvimento Local
+Acesse: http://localhost
+
+### Desenvolvimento Local
 
 ```bash
 # Backend
 cd backend
-cp .env.example .env
-# Edite o .env com suas configurações do PostgreSQL
 npm install
-npx prisma generate
-npx prisma db push
-npm run db:seed
+cp .env.example .env
+npx prisma migrate dev
+npx prisma db seed
 npm run dev
 
-# Frontend (em outro terminal)
+# Frontend (outro terminal)
 cd frontend
 npm install
 npm run dev
 ```
 
+Backend: http://localhost:3001
+Frontend: http://localhost:5173
+
 ## 🔑 Credenciais de Teste
 
-Após rodar o seed, use:
+| Tipo | CPF | CNPJ | Senha |
+|------|-----|------|-------|
+| Admin | 000.000.000-00 | - | 123456 |
+| Cliente (Maria) | 123.456.789-00 | 12.345.678/0001-90 | 123456 |
+| Cliente (João) | 987.654.321-00 | 98.765.432/0001-10 | 123456 |
 
-- **CPF:** 123.456.789-00
-- **Senha:** 123456
+## 🌐 Deploy
 
-## 📁 Estrutura do Projeto
+### Railway
+
+1. Conecte seu repositório
+2. Configure variáveis de ambiente:
+   - `DATABASE_URL` (provisione PostgreSQL)
+   - `JWT_SECRET`
+   - `NODE_ENV=production`
+3. Deploy automático
+
+### Render
+
+1. Crie Web Service para backend
+2. Crie Static Site para frontend
+3. Crie PostgreSQL database
+4. Configure variáveis
+
+### DigitalOcean App Platform
+
+1. Conecte repositório
+2. Configure componentes:
+   - Backend: Docker
+   - Frontend: Static
+   - Database: PostgreSQL
+3. Deploy
+
+## 📁 Estrutura
 
 ```
 mei-control/
-├── backend/                 # API Node.js
-│   ├── prisma/             # Schema e migrations
-│   │   ├── schema.prisma   # Modelo do banco
-│   │   └── seed.js         # Dados iniciais
+├── backend/
+│   ├── prisma/
+│   │   ├── schema.prisma
+│   │   └── seed.js
 │   ├── src/
-│   │   ├── controllers/    # Lógica dos endpoints
-│   │   ├── middleware/     # Auth, erros, rate limit
-│   │   ├── routes/         # Definição das rotas
-│   │   ├── services/       # Serviços (notificações, cron)
-│   │   └── server.js       # Entrada da aplicação
+│   │   ├── server.js
+│   │   ├── middleware/
+│   │   ├── routes/
+│   │   └── services/
 │   ├── Dockerfile
 │   └── package.json
-│
-├── frontend/               # React + Vite
+├── frontend/
 │   ├── src/
-│   │   ├── components/     # Componentes reutilizáveis
-│   │   ├── context/        # Estado global (Zustand)
-│   │   ├── pages/          # Páginas da aplicação
-│   │   ├── services/       # Chamadas à API
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── context/
+│   │   ├── services/
 │   │   └── App.jsx
 │   ├── Dockerfile
 │   ├── nginx.conf
 │   └── package.json
-│
-├── docker-compose.yml      # Orquestração dos containers
+├── docker-compose.yml
 └── README.md
 ```
 
-## ☁️ Deploy na Nuvem
+## 📝 API Endpoints
 
-### Railway (Mais Fácil)
+### Autenticação
+- `POST /api/v1/auth/login` - Login com CPF
+- `POST /api/v1/auth/login-cnpj` - Login com CNPJ
+- `GET /api/v1/auth/me` - Usuário atual
 
-1. Crie uma conta em [railway.app](https://railway.app)
-2. Conecte seu repositório GitHub
-3. Railway detecta automaticamente o docker-compose
-4. Configure as variáveis de ambiente
-5. Deploy automático!
+### Dashboard
+- `GET /api/v1/dashboard/admin` - Dashboard admin
+- `GET /api/v1/dashboard/cliente` - Dashboard cliente
 
-### Render
+### MEIs
+- `GET /api/v1/meis` - Listar MEIs
+- `POST /api/v1/meis` - Criar MEI
+- `PUT /api/v1/meis/:id` - Atualizar MEI
+- `DELETE /api/v1/meis/:id` - Deletar MEI
 
-1. Crie uma conta em [render.com](https://render.com)
-2. Crie um PostgreSQL Database
-3. Crie um Web Service para o backend (Node)
-4. Crie um Static Site para o frontend
-5. Configure as variáveis
+### Notas Fiscais
+- `GET /api/v1/notas` - Listar notas
+- `POST /api/v1/notas` - Emitir nota
+- `POST /api/v1/notas/:id/cancelar` - Cancelar nota
 
-### DigitalOcean App Platform
+### Solicitações
+- `GET /api/v1/solicitacoes` - Listar solicitações
+- `POST /api/v1/solicitacoes` - Criar solicitação (multipart)
+- `PUT /api/v1/solicitacoes/:id/status` - Atualizar status
 
-1. Crie uma conta em [digitalocean.com](https://digitalocean.com)
-2. Vá em App Platform > Create App
-3. Conecte o repositório
-4. Configure os recursos (backend, frontend, database)
-5. Deploy!
+### DAS
+- `GET /api/v1/das` - Listar DAS
+- `POST /api/v1/das/:id/pagar` - Registrar pagamento
 
-### AWS (Mais Controle)
+### Clientes
+- `GET /api/v1/clientes` - Listar clientes
+- `POST /api/v1/clientes` - Criar cliente
+- `PUT /api/v1/clientes/:id` - Atualizar
+- `DELETE /api/v1/clientes/:id` - Deletar
 
-```bash
-# Com Docker em EC2
-ssh usuario@seu-servidor
+## 🔒 Segurança
 
-# Instalar Docker
-curl -fsSL https://get.docker.com | sh
-
-# Clonar e rodar
-git clone https://github.com/seu-usuario/mei-control.git
-cd mei-control
-docker compose up -d
-```
-
-## 🔧 Variáveis de Ambiente
-
-### Backend (.env)
-
-```env
-NODE_ENV=production
-PORT=3001
-DATABASE_URL=postgresql://user:password@host:5432/database
-JWT_SECRET=sua-chave-secreta-muito-segura
-JWT_EXPIRES_IN=7d
-FRONTEND_URL=https://seu-dominio.com
-```
-
-### Frontend
-
-O frontend usa proxy em desenvolvimento. Em produção, configure a variável:
-
-```env
-VITE_API_URL=https://api.seu-dominio.com/api/v1
-```
-
-## 📊 Endpoints da API
-
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| POST | /api/v1/auth/login | Login |
-| POST | /api/v1/auth/registro | Criar conta |
-| GET | /api/v1/meis | Listar MEIs |
-| POST | /api/v1/meis | Cadastrar MEI |
-| GET | /api/v1/clientes | Listar clientes |
-| POST | /api/v1/clientes | Cadastrar cliente |
-| GET | /api/v1/notas-fiscais | Listar notas |
-| POST | /api/v1/notas-fiscais | Emitir nota |
-| GET | /api/v1/dashboard/:meiId | Dados do dashboard |
-| GET | /api/v1/das | Listar guias DAS |
-
-## 🛡️ Segurança
-
-- Senhas hasheadas com bcrypt (12 rounds)
-- Autenticação via JWT
+- JWT com expiração configurável
 - Rate limiting por IP
-- Validação de entrada com express-validator
-- Helmet para headers de segurança
-- CORS configurado
-
-## 📝 Limites do MEI (2025)
-
-- **Teto anual:** R$ 81.000,00
-- **Média mensal:** R$ 6.750,00
-- **Tolerância:** Até 20% acima (R$ 97.200)
-- **DAS mensal:** ~R$ 75,90 (5% do salário mínimo + ISS ou ICMS)
-
-## 🤝 Contribuindo
-
-1. Fork o projeto
-2. Crie sua branch (`git checkout -b feature/MinhaFeature`)
-3. Commit suas mudanças (`git commit -m 'Add MinhaFeature'`)
-4. Push para a branch (`git push origin feature/MinhaFeature`)
-5. Abra um Pull Request
+- Helmet para headers HTTP
+- CORS configurável
+- Senhas com bcrypt
+- Validação de roles
 
 ## 📄 Licença
 
-MIT License - veja [LICENSE](LICENSE) para detalhes.
-
-## 🆘 Suporte
-
-- Abra uma [issue](https://github.com/seu-usuario/mei-control/issues)
-- Entre em contato: seu-email@exemplo.com
+MIT © 2024
 
 ---
 
-Desenvolvido com ❤️ para simplificar a vida do MEI brasileiro.
+Desenvolvido com ❤️ para simplificar a gestão de MEIs

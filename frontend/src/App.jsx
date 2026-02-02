@@ -1,68 +1,81 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuthStore } from './context/authStore'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import Dashboard from './pages/Dashboard'
-import NotasFiscais from './pages/NotasFiscais'
-import Clientes from './pages/Clientes'
-import Relatorios from './pages/Relatorios'
-import DAS from './pages/DAS'
-import Calendario from './pages/Calendario'
-import Configuracoes from './pages/Configuracoes'
-import Layout from './components/Layout'
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import useAuthStore from './context/authStore';
 
-// Rota protegida
-const PrivateRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuthStore()
-  
-  if (loading) {
+// Pages
+import Login from './pages/Login';
+import Layout from './components/Layout';
+import DashboardAdmin from './pages/DashboardAdmin';
+import DashboardCliente from './pages/DashboardCliente';
+import Meis from './pages/Meis';
+import Notas from './pages/Notas';
+import Solicitacoes from './pages/Solicitacoes';
+import DAS from './pages/DAS';
+import Clientes from './pages/Clientes';
+
+// Protected Route
+function ProtectedRoute({ children, adminOnly = false }) {
+  const { isAuthenticated, isAdmin, verificarAuth } = useAuthStore();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    verificarAuth().finally(() => setChecking(false));
+  }, []);
+
+  if (checking) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
       </div>
-    )
+    );
   }
-  
-  return isAuthenticated ? children : <Navigate to="/login" />
+
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (adminOnly && !isAdmin()) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
 }
 
-// Rota pública (redireciona se logado)
-const PublicRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuthStore()
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
-      </div>
-    )
-  }
-  
-  return !isAuthenticated ? children : <Navigate to="/" />
+// Dashboard Router
+function DashboardRouter() {
+  const { isAdmin } = useAuthStore();
+  return isAdmin() ? <DashboardAdmin /> : <DashboardCliente />;
 }
 
 function App() {
   return (
     <Routes>
-      {/* Rotas públicas */}
-      <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-      <Route path="/registro" element={<PublicRoute><Register /></PublicRoute>} />
+      {/* Public */}
+      <Route path="/login" element={<Login />} />
       
-      {/* Rotas protegidas */}
-      <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
-        <Route index element={<Dashboard />} />
-        <Route path="notas" element={<NotasFiscais />} />
-        <Route path="clientes" element={<Clientes />} />
-        <Route path="relatorios" element={<Relatorios />} />
+      {/* Protected */}
+      <Route path="/" element={
+        <ProtectedRoute>
+          <Layout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardRouter />} />
+        <Route path="meis" element={
+          <ProtectedRoute adminOnly>
+            <Meis />
+          </ProtectedRoute>
+        } />
+        <Route path="notas" element={<Notas />} />
+        <Route path="solicitacoes" element={<Solicitacoes />} />
         <Route path="das" element={<DAS />} />
-        <Route path="calendario" element={<Calendario />} />
-        <Route path="configuracoes" element={<Configuracoes />} />
+        <Route path="clientes" element={<Clientes />} />
       </Route>
       
-      {/* Rota 404 */}
-      <Route path="*" element={<Navigate to="/" />} />
+      {/* 404 */}
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
-  )
+  );
 }
 
-export default App
+export default App;
