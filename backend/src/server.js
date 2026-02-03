@@ -24,9 +24,10 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 
 // Middlewares globais
+app.set('trust proxy', 1); // Necessário para Railway/proxies
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: process.env.FRONTEND_URL || '*',
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
