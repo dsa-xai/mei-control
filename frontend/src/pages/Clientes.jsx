@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Plus, Edit2, Trash2, User, Building2, Phone, Mail, MapPin, X, Save, Loader2 } from 'lucide-react';
 import { clienteAPI } from '../services/api';
-import { useAuthStore } from '../context/authStore';
+import useAuthStore from '../context/authStore';
 import toast from 'react-hot-toast';
 
 export default function Clientes() {
