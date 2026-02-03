@@ -104,14 +104,51 @@ Frontend: http://localhost:5173
 
 ## 🌐 Deploy
 
-### Railway
+### Railway (Recomendado)
 
-1. Conecte seu repositório
-2. Configure variáveis de ambiente:
-   - `DATABASE_URL` (provisione PostgreSQL)
-   - `JWT_SECRET`
-   - `NODE_ENV=production`
-3. Deploy automático
+#### Passo 1: Backend
+
+1. Crie um novo projeto no Railway
+2. Adicione um **PostgreSQL** database
+3. Crie um serviço conectando seu repo, pasta `backend/`
+4. Configure as variáveis:
+
+| Variável | Valor |
+|----------|-------|
+| `DATABASE_URL` | (automático do PostgreSQL) |
+| `JWT_SECRET` | `sua-chave-secreta-aqui` |
+| `NODE_ENV` | `production` |
+
+5. Em **Settings > Deploy > Start Command**:
+```bash
+npx prisma db push && node prisma/seed.js && node src/server.js
+```
+
+6. **Após primeiro deploy**, mude o Start Command para:
+```bash
+node src/server.js
+```
+
+7. Anote a URL do backend (ex: `https://mei-backend-xxx.up.railway.app`)
+
+#### Passo 2: Frontend
+
+1. Crie outro serviço, pasta `frontend/`
+2. Em **Variables**, adicione:
+
+| Variável | Valor |
+|----------|-------|
+| `VITE_API_URL` | `https://SEU-BACKEND.up.railway.app/api/v1` |
+
+3. Deploy automático!
+
+#### Passo 3: CORS
+
+Volte no backend e adicione:
+
+| Variável | Valor |
+|----------|-------|
+| `FRONTEND_URL` | `https://SEU-FRONTEND.up.railway.app` |
 
 ### Render
 
